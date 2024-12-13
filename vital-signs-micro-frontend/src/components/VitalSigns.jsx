@@ -1,7 +1,6 @@
-import { format } from 'date-fns';
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useMutation, useLazyQuery, gql } from '@apollo/client';
-import { UserContext } from '../../../shell-app/src/UserProvider'; 
+import { useAuth } from './AuthContext';
 
 const ADD_VITAL_SIGN = gql`
   mutation AddVitalSign(
@@ -26,8 +25,8 @@ const ADD_VITAL_SIGN = gql`
 `;
 
 const GET_VITAL_SIGNS = gql`
-  query GetVitalSigns($username: String) {
-    getVitalSigns(username: $username) {
+  query GetVitalSigns($userId: ID!) {
+    getVitalSigns(userId: $userId) {
       id
       userId
       heartRate
@@ -61,7 +60,7 @@ const GET_VITAL_SIGNS = gql`
 `;
 
 const VitalSigns = () => {
-
+  const {user } = useAuth();
   const [formData, setFormData] = useState({
     userId: '',
     heartRate: '',
@@ -73,14 +72,13 @@ const VitalSigns = () => {
   const [addVitalSign] = useMutation(ADD_VITAL_SIGN);
   const [updateVitalSign] = useMutation(UPDATE_VITAL_SIGN);
   const [formState, setFormState] = useState({});
-  //const { user } = useContext(UserContext);
 
   // Automatically fetch vital signs for logged-in user
-  /*useEffect(() => {
-    if (user && user.token) {
+  React.useEffect(() => {
+    if (user) {
       fetchVitalSigns({ variables: { userId: user.id } });
     }
-  }, [user, fetchVitalSigns]);*/
+  }, [user, fetchVitalSigns]);
 
 
   const handleInputChange = (id, field, value) => {
@@ -115,7 +113,11 @@ const VitalSigns = () => {
   };
 
   const handleFetchVitalSigns = () => {
-    fetchVitalSigns({ variables: { username: formData.username } });
+    if (!formData.userId) {
+      alert("Please enter a valid user id");
+      return;
+    }
+    fetchVitalSigns({ variables: { userId: formData.userId } });
   };
 
   const handleAddVitalSign = async () => {
@@ -171,9 +173,9 @@ const VitalSigns = () => {
       />
       <input
         type="text"
-        placeholder="Username"
-        value={formData.username}
-        onChange={e => setFormData({ ...formData, username: e.target.value })}
+        placeholder="User ID"
+        value={formData.userId}
+        onChange={e => setFormData({ ...formData, userId: e.target.value })}
       />
       <button onClick={handleAddVitalSign}>Add Vital Sign</button>
       <button onClick={handleFetchVitalSigns}>Fetch Vital Signs</button>
@@ -183,10 +185,6 @@ const VitalSigns = () => {
       {error && <p>Error fetching vital signs: {error.message}</p>}
       <ul>
   {data?.getVitalSigns?.map((vs) => {
-    const timestamp = vs.createdAt.toString().length > 10 ? vs.createdAt / 1000 : vs.createdAt; 
-    const date = new Date(timestamp * 1000); // Convert to milliseconds if needed const formattedDate = format(date, 'yyyy-MM-dd HH:mm:ss');
-    const formattedDate = format(date, 'yyyy-MM-dd HH:mm:ss');
-
     return (
       <li key={vs.id}>
       <form
@@ -225,10 +223,6 @@ const VitalSigns = () => {
                     handleInputChange(vs.id, 'temperature', e.target.value)
                   }
                 />
-              </div>
-              <div>
-                <label>Created At:</label>
-                <p>{formattedDate} </p>
               </div>
               <button type="submit">Update</button>
             </form>
